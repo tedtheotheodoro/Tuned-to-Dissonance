@@ -8,7 +8,7 @@ import TimelineStage from './components/stages/TimelineStage';
 import SelectionStage from './components/stages/SelectionStage';
 import PairsStage from './components/stages/PairsStage';
 import CategorizationStage from './components/stages/CategorizationStage';
-import CreativeStage from "./components/stages/CreativeStage";
+import CreativeStage from "./components/stages/creativeStage";
 
 
 
