@@ -48,7 +48,7 @@ const StageTypes = {
   "creative-composition": CreativeStage
 };
 
-const allActs = { 1: act1Stages, 2: act2Stages, 3: act3Stages, 4: act4Stages, 5: act4Stages};
+const allActs = { 1: act1Stages, 2: act2Stages, 3: act3Stages, 4: act4Stages, 5: act5Stages};
 
 function TunedToDissonance() {
   const [currentAct, setCurrentAct] = useState(1);
