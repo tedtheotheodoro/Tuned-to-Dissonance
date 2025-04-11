@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useReducer } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import AudioController from './components/AudioController';
+import AudioController from './components/audioController.jsx';
 import act1Stages from './components/data/act1Stages.js';
 import act2Stages from './components/data/act2Stages.js';
 import act3Stages from './components/data/act3Stages.js';
