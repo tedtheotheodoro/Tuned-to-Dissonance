@@ -4,11 +4,13 @@ import AudioController from './components/AudioController';
 import act1Stages from './components/data/act1Stages.js';
 import act2Stages from './components/data/act2Stages.js';
 import act3Stages from './components/data/act3Stages.js';
+import act4Stages from './components/data/act4Stages.js';
+import act5Stages from './components/data/act5Stages.js';
 import TimelineStage from './components/stages/TimelineStage';
 import SelectionStage from './components/stages/SelectionStage';
 import PairsStage from './components/stages/PairsStage';
 import CategorizationStage from './components/stages/CategorizationStage';
-import CreativeStage from "./components/stages/creativeStage";
+import CreativeStage from "./components/stages/CreativeStage";
 
 
 
@@ -46,7 +48,7 @@ const StageTypes = {
   "creative-composition": CreativeStage
 };
 
-const allActs = { 1: act1Stages, 2: act2Stages, 3: act3Stages };
+const allActs = { 1: act1Stages, 2: act2Stages, 3: act3Stages, 4: act4Stages, 5: act4Stages};
 
 function TunedToDissonance() {
   const [currentAct, setCurrentAct] = useState(1);
@@ -187,7 +189,7 @@ function TunedToDissonance() {
       <AudioController trackName={stage.audioTrack} isMuted={isMuted} />
 
       <div className="absolute top-4 left-4 z-50 flex gap-2">
-        {[1, 2, 3].map(act => (
+        {[1, 2, 3, 4, 5].map(act => (
           <button
             key={act}
             onClick={() => {
