@@ -11,6 +11,8 @@ import SelectionStage from './components/stages/SelectionStage';
 import PairsStage from './components/stages/PairsStage';
 import CategorizationStage from './components/stages/CategorizationStage';
 import CreativeStage from "./components/stages/CreativeStage";
+import StartScreen from './components/StartScreen';
+
 
 
 
@@ -54,6 +56,7 @@ function TunedToDissonance() {
   const [currentAct, setCurrentAct] = useState(1);
   const [currentStage, setCurrentStage] = useState(0);
   const [isMuted, setIsMuted] = useState(false);
+  const [showStart, setShowStart] = useState(true);
 
   const [state, dispatch] = useReducer(stageReducer, {
     userAnswers: [],
@@ -180,16 +183,18 @@ function TunedToDissonance() {
       case "categorization":
         return <StageComponent {...commonProps} onDragEnd={handleDragEnd} />;
       case "creative-composition":
-        return <StageComponent {...commonProps} />;      
+        return <StageComponent {...commonProps} />;
       default:
         return <div>Unknown stage type</div>;
     }
   };
 
-  return (
+  return showStart ? (
+    <StartScreen onStart={() => setShowStart(false)} />
+  ) : (
     <div className="min-h-screen bg-gray-900 text-gray-100 flex flex-col items-center p-8 relative">
       <AudioController trackName={stage.audioTrack} isMuted={isMuted} />
-
+  
       <div className="absolute top-4 left-4 z-50 flex gap-2">
         {[1, 2, 3, 4, 5].map(act => (
           <button
@@ -198,15 +203,14 @@ function TunedToDissonance() {
               setCurrentAct(act);
               setCurrentStage(0);
             }}
-            className={`px-3 py-1 rounded border ${
-              act === currentAct ? 'bg-purple-600 text-white' : 'bg-gray-700 text-gray-300'
-            }`}
+            className={`px-3 py-1 rounded border ${act === currentAct ? 'bg-purple-600 text-white' : 'bg-gray-700 text-gray-300'
+              }`}
           >
             Act {act}
           </button>
         ))}
       </div>
-
+  
       <button
         className="absolute top-4 right-4 z-50 text-sm px-3 py-1 bg-gray-800 border border-gray-600 rounded hover:bg-gray-700"
         onClick={() => setIsMuted(prev => !prev)}
@@ -214,7 +218,7 @@ function TunedToDissonance() {
       >
         {isMuted ? "🔇" : "🔊"}
       </button>
-
+  
       <div className="w-full max-w-6xl bg-gray-800 rounded-t-xl p-1">
         <div
           className="bg-purple-500 h-1 rounded-full"
@@ -224,7 +228,7 @@ function TunedToDissonance() {
           aria-valuemax="100"
         />
       </div>
-
+  
       <AnimatePresence mode="wait">
         <motion.div
           key={`${currentAct}-${currentStage}`}
@@ -241,11 +245,11 @@ function TunedToDissonance() {
             <p className="text-purple-200 italic mb-4">"{stage.setting}"</p>
             <p className="text-gray-300">{stage.description}</p>
           </div>
-
+  
           <div className="bg-gray-700/50 rounded-lg p-6 mb-8">
             {renderStageContent()}
           </div>
-
+  
           <div className="flex justify-center gap-4">
             <motion.button
               whileHover={{ scale: 1.05 }}
@@ -255,7 +259,7 @@ function TunedToDissonance() {
             >
               Reset Stage
             </motion.button>
-
+  
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
@@ -265,14 +269,13 @@ function TunedToDissonance() {
               {isLastStage && state.isCorrect ? "Complete Act" : "Check Connection"}
             </motion.button>
           </div>
-
+  
           {state.showFeedback && (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className={`mt-6 p-4 rounded-lg text-center ${
-                state.isCorrect ? "bg-green-800/80" : "bg-red-800/80"
-              }`}
+              className={`mt-6 p-4 rounded-lg text-center ${state.isCorrect ? "bg-green-800/80" : "bg-red-800/80"
+                }`}
             >
               {state.feedback}
             </motion.div>
@@ -281,10 +284,4 @@ function TunedToDissonance() {
       </AnimatePresence>
     </div>
   );
-}
-
-function arraysEqual(a, b) {
-  return a.length === b.length && a.every((val, i) => val === b[i]);
-}
-
-export default TunedToDissonance;
+}  
