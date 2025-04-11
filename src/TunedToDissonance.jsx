@@ -8,6 +8,9 @@ import TimelineStage from './components/stages/TimelineStage';
 import SelectionStage from './components/stages/SelectionStage';
 import PairsStage from './components/stages/PairsStage';
 import CategorizationStage from './components/stages/CategorizationStage';
+import CreativeStage from "./components/stages/CreativeStage";
+
+
 
 function stageReducer(state, action) {
   switch (action.type) {
@@ -39,7 +42,8 @@ const StageTypes = {
   timeline: TimelineStage,
   selection: SelectionStage,
   pairs: PairsStage,
-  categorization: CategorizationStage
+  categorization: CategorizationStage,
+  "creative-composition": CreativeStage
 };
 
 const allActs = { 1: act1Stages, 2: act2Stages, 3: act3Stages };
