@@ -21,7 +21,7 @@ function stageReducer(state, action) {
         ...state,
         userAnswers: [],
         selectedItems: [],
-        availableArtists: [...action.artists].sort(() => Math.random() - 0.5),
+        availableArtists: Array.isArray(action.artists) ? [...action.artists].sort(() => Math.random() - 0.5) : [],
         showFeedback: false
       };
     case 'UPDATE_ANSWERS':
@@ -179,6 +179,8 @@ function TunedToDissonance() {
         return <StageComponent {...commonProps} handlePairSelection={handlePairSelection} />;
       case "categorization":
         return <StageComponent {...commonProps} onDragEnd={handleDragEnd} />;
+      case "creative-composition":
+        return <StageComponent {...commonProps} />;      
       default:
         return <div>Unknown stage type</div>;
     }
