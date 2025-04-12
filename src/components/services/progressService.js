@@ -1,5 +1,5 @@
 import { doc, getDoc, setDoc, updateDoc } from "firebase/firestore";
-import { db } from "../../firebase";
+import { db } from "../firebase";
 
 // Gets progress of the user in the database
 export const getProgress = async (uid) => {
