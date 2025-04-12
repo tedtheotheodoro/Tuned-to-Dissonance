@@ -13,10 +13,10 @@ import CategorizationStage from './components/stages/CategorizationStage';
 import CreativeStage from "./components/stages/CreativeStage";
 import StartScreen from './components/StartScreen';
 import ProgressMap from './components/ProgressMap';
+import ActIntro from './components/ActIntro.jsx';
+import FeedbackModal from './components/FeedbackModal';
 import { getProgress, updateProgress } from "./components/services/progressService";
 import { auth } from './components/firebase';
-
-
 
 function stageReducer(state, action) {
   switch (action.type) {
@@ -26,7 +26,8 @@ function stageReducer(state, action) {
         userAnswers: [],
         selectedItems: [],
         availableArtists: Array.isArray(action.artists) ? [...action.artists].sort(() => Math.random() - 0.5) : [],
-        showFeedback: false
+        showFeedback: false,
+        showActIntro: true
       };
     case 'UPDATE_ANSWERS':
       return { ...state, userAnswers: action.payload };
@@ -44,6 +45,8 @@ function stageReducer(state, action) {
         ...state,
         progressData: action.payload
       };
+    case 'HIDE_ACT_INTRO':
+      return { ...state, showActIntro: false };
     default:
       return state;
   }
@@ -58,6 +61,10 @@ const StageTypes = {
 };
 
 const allActs = { 1: act1Stages, 2: act2Stages, 3: act3Stages, 4: act4Stages, 5: act5Stages };
+
+function arraysEqual(a, b) {
+  return a.length === b.length && a.every((val, i) => val === b[i]);
+}
 
 function TunedToDissonance() {
   const [currentAct, setCurrentAct] = useState(1);
@@ -74,18 +81,14 @@ function TunedToDissonance() {
     isCorrect: false,
     feedback: "",
     progressData: {
-      1: [0],
-      2: [],
-      3: [],
-      4: [],
-      5: []
-    }
+      1: [0], 2: [], 3: [], 4: [], 5: []
+    },
+    showActIntro: true
   });
 
   const stages = allActs[currentAct];
   const stage = stages[currentStage];
   const isLastStage = currentStage === stages.length - 1;
-  const progress = ((currentStage + 1) / stages.length) * 100;
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(async (user) => {
@@ -99,19 +102,12 @@ function TunedToDissonance() {
   }, []);
 
   useEffect(() => {
-    dispatch({
-      type: 'RESET_STAGE',
-      artists: stage.artists
-    });
-    localStorage.setItem(`act-${currentAct}-progress`, currentStage);
+    dispatch({ type: 'RESET_STAGE', artists: stage.artists });
   }, [currentStage, currentAct, stage.artists]);
 
   const handleTimelineDrop = (artist) => {
     if (!state.userAnswers.includes(artist)) {
-      dispatch({
-        type: 'UPDATE_ANSWERS',
-        payload: [...state.userAnswers, artist]
-      });
+      dispatch({ type: 'UPDATE_ANSWERS', payload: [...state.userAnswers, artist] });
     }
   };
 
@@ -127,10 +123,7 @@ function TunedToDissonance() {
       dispatch({ type: 'UPDATE_SELECTED', payload: [artist] });
     } else if (state.selectedItems.length === 1) {
       const newPair = [...state.selectedItems, artist].sort();
-      dispatch({
-        type: 'UPDATE_ANSWERS',
-        payload: [...state.userAnswers, newPair]
-      });
+      dispatch({ type: 'UPDATE_ANSWERS', payload: [...state.userAnswers, newPair] });
       dispatch({ type: 'UPDATE_SELECTED', payload: [] });
     }
   };
@@ -146,50 +139,32 @@ function TunedToDissonance() {
     let correct;
     switch (stage.type) {
       case "timeline":
-        correct = arraysEqual(state.userAnswers, stage.correctOrder);
-        break;
+        correct = arraysEqual(state.userAnswers, stage.correctOrder); break;
       case "selection":
-        correct = (
-          state.selectedItems.length === stage.correctAnswers.length &&
-          stage.correctAnswers.every(item => state.selectedItems.includes(item))
-        );
-        break;
+        correct = state.selectedItems.length === stage.correctAnswers.length &&
+          stage.correctAnswers.every(item => state.selectedItems.includes(item)); break;
       case "pairs":
         const userPairs = state.userAnswers.map(pair => pair.sort().join(","));
         const correctPairs = stage.correctPairs.map(pair => pair.sort().join(","));
-        correct = (
-          userPairs.length === correctPairs.length &&
-          correctPairs.every(pair => userPairs.includes(pair))
-        );
-        break;
+        correct = userPairs.length === correctPairs.length && correctPairs.every(pair => userPairs.includes(pair)); break;
       case "categorization":
-        correct = Object.keys(stage.categories).every(category => {
-          return stage.categories[category].every(artist =>
-            state.userAnswers[artist] === category
-          );
-        });
-        break;
+        correct = Object.keys(stage.categories).every(category =>
+          stage.categories[category].every(artist => state.userAnswers[artist] === category)); break;
       default:
         correct = false;
     }
 
-    const feedback = correct
-      ? stage.feedback
-      : "Not quite. Listen closer to the dissonance.";
-
     dispatch({
       type: 'SET_FEEDBACK',
-      payload: { isCorrect: correct, feedback, showFeedback: true }
+      payload: {
+        isCorrect: correct,
+        feedback: correct ? stage.feedback : "Not quite. Try again.",
+        showFeedback: true
+      }
     });
 
     if (correct) {
-      if (uid) {
-        updateProgress(uid, currentAct, currentStage + 1);
-      }
-      const timeout = setTimeout(() => {
-        !isLastStage && setCurrentStage(currentStage + 1);
-      }, 2000);
-      return () => clearTimeout(timeout);
+      if (uid) updateProgress(uid, currentAct, currentStage + 1);
     }
   };
 
@@ -218,44 +193,12 @@ function TunedToDissonance() {
     }
   };
 
-  return showStart ? (
-    <StartScreen onStart={() => setShowStart(false)} />
-  ) : (
-    <div className="min-h-screen bg-gray-900 text-gray-100 flex flex-col items-center p-8 relative">
+  if (showStart) return <StartScreen onStart={() => setShowStart(false)} />;
+  if (state.showActIntro) return <ActIntro setting={stage.setting} onContinue={() => dispatch({ type: 'HIDE_ACT_INTRO' })} />;
+
+  return (
+    <div className="min-h-screen bg-neutral-950 text-gray-100 flex flex-col items-center p-8 relative">
       <AudioController trackName={stage.audioTrack} isMuted={isMuted} />
-
-      <div className="absolute top-4 left-4 z-50 flex gap-2">
-        {[1, 2, 3, 4, 5].map(act => (
-          <button
-            key={act}
-            onClick={() => {
-              setCurrentAct(act);
-              setCurrentStage(0);
-            }}
-            className={`px-3 py-1 rounded border ${act === currentAct ? 'bg-purple-600 text-white' : 'bg-gray-700 text-gray-300'}`}
-          >
-            Act {act}
-          </button>
-        ))}
-      </div>
-
-      <button
-        className="absolute top-4 right-4 z-50 text-sm px-3 py-1 bg-gray-800 border border-gray-600 rounded hover:bg-gray-700"
-        onClick={() => setIsMuted(prev => !prev)}
-        aria-label={isMuted ? "Unmute audio" : "Mute audio"}
-      >
-        {isMuted ? "🔇" : "🔊"}
-      </button>
-
-      <div className="w-full max-w-6xl bg-gray-800 rounded-t-xl p-1">
-        <div
-          className="bg-purple-500 h-1 rounded-full"
-          style={{ width: `${progress}%` }}
-          aria-valuenow={progress}
-          aria-valuemin="0"
-          aria-valuemax="100"
-        />
-      </div>
 
       <ProgressMap
         acts={[
@@ -271,6 +214,7 @@ function TunedToDissonance() {
           setCurrentAct(actId);
           setCurrentStage(stageIndex);
         }}
+        showPrompt={currentStage === 0 && state.progressData[currentAct]?.length === 1}
       />
 
       <AnimatePresence mode="wait">
@@ -280,13 +224,12 @@ function TunedToDissonance() {
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.3 }}
-          className="w-full max-w-6xl bg-gray-800 rounded-b-xl p-8 shadow-2xl"
+          className="w-full max-w-6xl bg-gray-800 rounded-xl p-8 shadow-2xl"
         >
           <div className="text-center mb-8">
             <h1 className="text-3xl font-bold text-purple-400 mb-2">
               ACT {currentAct} – {stage.title.toUpperCase()}
             </h1>
-            <p className="text-purple-200 italic mb-4">"{stage.setting}"</p>
             <p className="text-gray-300">{stage.description}</p>
           </div>
 
@@ -313,25 +256,21 @@ function TunedToDissonance() {
               {isLastStage && state.isCorrect ? "Complete Act" : "Check Connection"}
             </motion.button>
           </div>
-
-          {state.showFeedback && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className={`mt-6 p-4 rounded-lg text-center ${state.isCorrect ? "bg-green-800/80" : "bg-red-800/80"}`}
-            >
-              {state.feedback}
-            </motion.div>
-          )}
         </motion.div>
       </AnimatePresence>
+
+      {state.showFeedback && (
+        <FeedbackModal
+          message={state.feedback}
+          isCorrect={state.isCorrect}
+          onClose={() => {
+            dispatch({ type: 'SET_FEEDBACK', payload: { isCorrect: false, feedback: '', showFeedback: false } });
+            if (state.isCorrect && !isLastStage) setCurrentStage(currentStage + 1);
+          }}
+        />
+      )}
     </div>
   );
 }
 
-function arraysEqual(a, b) {
-  return a.length === b.length && a.every((val, i) => val === b[i]);
-}
-
 export default TunedToDissonance;
-export { stageReducer, StageTypes, allActs };
