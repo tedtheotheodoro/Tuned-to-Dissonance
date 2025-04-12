@@ -188,7 +188,7 @@ function TunedToDissonance() {
   return (
     <div className="min-h-screen bg-black text-gray-100 flex flex-col items-center p-8">
       {screen === 'start' && <StartScreen onStart={() => setScreen('map')} />}
-
+  
       {screen === 'map' && (
         <>
           <p className="text-purple-300 text-lg mb-4">
@@ -208,15 +208,16 @@ function TunedToDissonance() {
           />
         </>
       )}
-
-      {screen === 'intro' && (
+  
+      {/* Só renderiza quando stage tiver conteúdo */}
+      {screen === 'intro' && stage && stage.title && (
         <ActIntro
           act={currentAct}
           stage={stage}
           onEnter={() => setScreen('stage')}
         />
       )}
-
+  
       {screen === 'stage' && (
         <>
           <AudioController trackName={stage.audioTrack} isMuted={isMuted} />
