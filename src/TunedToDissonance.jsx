@@ -25,9 +25,7 @@ function stageReducer(state, action) {
         ...state,
         userAnswers: [],
         selectedItems: [],
-        availableArtists: Array.isArray(action.artists)
-          ? [...action.artists].sort(() => Math.random() - 0.5)
-          : [],
+        availableArtists: Array.isArray(action.artists) ? [...action.artists].sort(() => Math.random() - 0.5) : [],
         showFeedback: false
       };
     case 'UPDATE_ANSWERS':
@@ -42,7 +40,10 @@ function stageReducer(state, action) {
         showFeedback: action.payload.showFeedback
       };
     case 'SET_PROGRESS':
-      return { ...state, progressData: action.payload };
+      return {
+        ...state,
+        progressData: action.payload
+      };
     default:
       return state;
   }
@@ -67,7 +68,7 @@ const allActs = {
 function TunedToDissonance() {
   const [currentAct, setCurrentAct] = useState(1);
   const [currentStage, setCurrentStage] = useState(0);
-  const [screen, setScreen] = useState('start'); // 'start' | 'map' | 'intro' | 'stage'
+  const [screen, setScreen] = useState('start');
   const [isMuted, setIsMuted] = useState(false);
   const [uid, setUid] = useState(null);
 
@@ -78,12 +79,19 @@ function TunedToDissonance() {
     showFeedback: false,
     isCorrect: false,
     feedback: '',
-    progressData: { 1: [0], 2: [], 3: [], 4: [], 5: [] }
+    progressData: {
+      1: [0],
+      2: [],
+      3: [],
+      4: [],
+      5: []
+    }
   });
 
   const stages = allActs[currentAct];
   const stage = stages[currentStage];
   const isLastStage = currentStage === stages.length - 1;
+
   const progress = ((currentStage + 1) / stages.length) * 100;
 
   useEffect(() => {
@@ -114,19 +122,24 @@ function TunedToDissonance() {
         correct = arraysEqual(state.userAnswers, stage.correctOrder);
         break;
       case 'selection':
-        correct =
+        correct = (
           state.selectedItems.length === stage.correctAnswers.length &&
-          stage.correctAnswers.every((item) => state.selectedItems.includes(item));
+          stage.correctAnswers.every(item => state.selectedItems.includes(item))
+        );
         break;
       case 'pairs':
-        const userPairs = state.userAnswers.map((pair) => pair.sort().join(','));
-        const correctPairs = stage.correctPairs.map((pair) => pair.sort().join(','));
-        correct =
-          userPairs.length === correctPairs.length && correctPairs.every((pair) => userPairs.includes(pair));
+        const userPairs = state.userAnswers.map(pair => pair.sort().join(','));
+        const correctPairs = stage.correctPairs.map(pair => pair.sort().join(','));
+        correct = (
+          userPairs.length === correctPairs.length &&
+          correctPairs.every(pair => userPairs.includes(pair))
+        );
         break;
       case 'categorization':
-        correct = Object.keys(stage.categories).every((category) =>
-          stage.categories[category].every((artist) => state.userAnswers[artist] === category)
+        correct = Object.keys(stage.categories).every(category =>
+          stage.categories[category].every(artist =>
+            state.userAnswers[artist] === category
+          )
         );
         break;
       default:
@@ -134,16 +147,25 @@ function TunedToDissonance() {
     }
 
     const feedback = correct ? stage.feedback : 'Not quite. Listen closer to the dissonance.';
-    dispatch({ type: 'SET_FEEDBACK', payload: { isCorrect: correct, feedback, showFeedback: true } });
 
-    if (correct) {
-      if (uid) updateProgress(uid, currentAct, currentStage + 1);
-      setTimeout(() => {
-        if (!isLastStage) {
-          setCurrentStage((prev) => prev + 1);
-          setScreen('intro');
-        }
-      }, 1000);
+    dispatch({
+      type: 'SET_FEEDBACK',
+      payload: { isCorrect: correct, feedback, showFeedback: true }
+    });
+
+    if (correct && uid) {
+      updateProgress(uid, currentAct, currentStage + 1);
+    }
+  };
+
+  const proceedAfterCorrect = () => {
+    dispatch({ type: 'SET_FEEDBACK', payload: { showFeedback: false } });
+
+    if (!isLastStage) {
+      setCurrentStage(prev => prev + 1);
+      setScreen('intro');
+    } else {
+      setScreen('map');
     }
   };
 
@@ -158,16 +180,26 @@ function TunedToDissonance() {
 
     switch (stage.type) {
       case 'timeline':
-        return <StageComponent {...commonProps} handleTimelineDrop={(artist) => dispatch({ type: 'UPDATE_ANSWERS', payload: [...state.userAnswers, artist] })} />;
+        return <StageComponent {...commonProps} handleTimelineDrop={(artist) =>
+          dispatch({ type: 'UPDATE_ANSWERS', payload: [...state.userAnswers, artist] })} />;
       case 'selection':
-        return <StageComponent {...commonProps} handleSelection={(artist) => dispatch({ type: 'UPDATE_SELECTED', payload: state.selectedItems.includes(artist) ? state.selectedItems.filter((item) => item !== artist) : [...state.selectedItems, artist] })} />;
+        return <StageComponent {...commonProps} handleSelection={(artist) =>
+          dispatch({
+            type: 'UPDATE_SELECTED',
+            payload: state.selectedItems.includes(artist)
+              ? state.selectedItems.filter(item => item !== artist)
+              : [...state.selectedItems, artist]
+          })} />;
       case 'pairs':
         return <StageComponent {...commonProps} handlePairSelection={(artist) => {
           if (state.selectedItems.length === 0) {
             dispatch({ type: 'UPDATE_SELECTED', payload: [artist] });
           } else if (state.selectedItems.length === 1) {
             const newPair = [...state.selectedItems, artist].sort();
-            dispatch({ type: 'UPDATE_ANSWERS', payload: [...state.userAnswers, newPair] });
+            dispatch({
+              type: 'UPDATE_ANSWERS',
+              payload: [...state.userAnswers, newPair]
+            });
             dispatch({ type: 'UPDATE_SELECTED', payload: [] });
           }
         }} />;
@@ -188,7 +220,7 @@ function TunedToDissonance() {
   return (
     <div className="min-h-screen bg-black text-gray-100 flex flex-col items-center p-8">
       {screen === 'start' && <StartScreen onStart={() => setScreen('map')} />}
-  
+
       {screen === 'map' && (
         <>
           <p className="text-purple-300 text-lg mb-4">
@@ -208,16 +240,16 @@ function TunedToDissonance() {
           />
         </>
       )}
-  
-      {/* Só renderiza quando stage tiver conteúdo */}
-      {screen === 'intro' && stage && stage.title && (
+
+      {screen === 'intro' && (
         <ActIntro
-          act={currentAct}
-          stage={stage}
-          onEnter={() => setScreen('stage')}
+          actNumber={currentAct}
+          stageNumber={currentStage + 1}
+          setting={stage.setting}
+          onContinue={() => setScreen('stage')}
         />
       )}
-  
+
       {screen === 'stage' && (
         <>
           <AudioController trackName={stage.audioTrack} isMuted={isMuted} />
@@ -257,7 +289,9 @@ function TunedToDissonance() {
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                   className="px-6 py-3 bg-gray-600 hover:bg-gray-500 rounded-lg font-medium"
-                  onClick={() => dispatch({ type: 'RESET_STAGE', artists: stage.artists })}
+                  onClick={() =>
+                    dispatch({ type: 'RESET_STAGE', artists: stage.artists })
+                  }
                 >
                   Reset Stage
                 </motion.button>
@@ -275,14 +309,11 @@ function TunedToDissonance() {
           </AnimatePresence>
 
           <FeedbackModal
-            visible={state.showFeedback}
+            show={state.showFeedback}
+            message={state.feedback}
             isCorrect={state.isCorrect}
-            feedback={state.feedback}
-            onClose={() =>
-              dispatch({
-                type: 'SET_FEEDBACK',
-                payload: { ...state, showFeedback: false }
-              })
+            onClose={state.isCorrect ? proceedAfterCorrect : () =>
+              dispatch({ type: 'SET_FEEDBACK', payload: { showFeedback: false } })
             }
           />
         </>
