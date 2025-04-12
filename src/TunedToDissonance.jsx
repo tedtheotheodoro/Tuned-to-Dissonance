@@ -14,7 +14,8 @@ import CreativeStage from "./components/stages/CreativeStage";
 import StartScreen from './components/StartScreen';
 import ProgressMap from './components/ProgressMap';
 import { getProgress, updateProgress } from "./components/services/progressService";
-import { auth } from "./firebase";
+import { db } from "./firebase";
+
 
 function stageReducer(state, action) {
   switch (action.type) {
