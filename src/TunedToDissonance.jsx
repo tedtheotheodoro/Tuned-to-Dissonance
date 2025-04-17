@@ -17,39 +17,7 @@ import ActIntro from './components/ActIntro';
 import FeedbackModal from './components/FeedbackModal';
 import { getProgress, updateProgress } from './components/services/progressService';
 import { auth } from './components/firebase';
-
-function stageReducer(state, action) {
-  switch (action.type) {
-    case 'RESET_STAGE':
-      return {
-        ...state,
-        userAnswers: [],
-        selectedItems: [],
-        availableArtists: Array.isArray(action.artists)
-          ? [...action.artists].sort(() => Math.random() - 0.5)
-          : [],
-        showFeedback: false
-      };
-    case 'UPDATE_ANSWERS':
-      return { ...state, userAnswers: action.payload };
-    case 'UPDATE_SELECTED':
-      return { ...state, selectedItems: action.payload };
-    case 'SET_FEEDBACK':
-      return {
-        ...state,
-        isCorrect: action.payload.isCorrect,
-        feedback: action.payload.feedback,
-        showFeedback: action.payload.showFeedback
-      };
-    case 'SET_PROGRESS':
-      return {
-        ...state,
-        progressData: action.payload
-      };
-    default:
-      return state;
-  }
-}
+import { stageReducer, initialState } from './stageReducer';
 
 const StageTypes = {
   timeline: TimelineStage,
@@ -75,12 +43,7 @@ function TunedToDissonance() {
   const [uid, setUid] = useState(null);
 
   const [state, dispatch] = useReducer(stageReducer, {
-    userAnswers: [],
-    selectedItems: [],
-    availableArtists: [],
-    showFeedback: false,
-    isCorrect: false,
-    feedback: '',
+    ...initialState,
     progressData: {
       1: [0],
       2: [],
@@ -107,73 +70,102 @@ function TunedToDissonance() {
   }, []);
 
   useEffect(() => {
-    dispatch({ type: 'RESET_STAGE', artists: stage.artists });
-  }, [currentStage, currentAct, stage.artists]);
+    if (stage && stage.artists) {
+      dispatch({ type: 'RESET_STAGE', artists: stage.artists });
+    }
+  }, [currentStage, currentAct, stage]);
 
   const handleStageSelect = (actId, stageIndex) => {
-    const isUnlocked = state.progressData[actId]?.includes(stageIndex - 1) || stageIndex === 0;
+    const isFirstStage = stageIndex === 0;
+    const prevStageCompleted = state.progressData[actId]?.includes(stageIndex - 1);
+    const isUnlocked = isFirstStage || prevStageCompleted;
+    
     if (isUnlocked) {
       setCurrentAct(actId);
       setCurrentStage(stageIndex);
       setScreen('intro');
+    } else {
+      dispatch({ 
+        type: 'SET_FEEDBACK', 
+        payload: { 
+          isCorrect: false, 
+          feedback: 'Complete the previous stage first!', 
+          showFeedback: true 
+        } 
+      });
     }
   };
 
   const checkAnswers = () => {
+    if (!stage || !state.userAnswers) return;
     let correct = false;
 
     switch (stage.type) {
       case 'timeline':
-        correct = arraysEqual(state.userAnswers, stage.correctOrder);
+        correct = arraysEqual(
+          Array.isArray(state.userAnswers) ? state.userAnswers : [],
+          Array.isArray(stage.correctOrder) ? stage.correctOrder : []
+        );
         break;
       case 'selection':
         correct = (
+          Array.isArray(state.selectedItems) &&
+          Array.isArray(stage.correctAnswers) &&
           state.selectedItems.length === stage.correctAnswers.length &&
           stage.correctAnswers.every((item) => state.selectedItems.includes(item))
         );
         break;
       case 'pairs':
-        const userPairs = state.userAnswers.map(pair => pair.sort().join(','));
-        const correctPairs = stage.correctPairs.map(pair => pair.sort().join(','));
+        const userPairs = Array.isArray(state.userAnswers) ? state.userAnswers.map(pair => Array.isArray(pair) ? pair.sort().join(',') : '') : [];
+        const correctPairs = Array.isArray(stage.correctPairs) ? stage.correctPairs.map(pair => Array.isArray(pair) ? pair.sort().join(',') : '') : [];
         correct = (
           userPairs.length === correctPairs.length &&
           correctPairs.every(pair => userPairs.includes(pair))
         );
         break;
       case 'categorization':
-        correct = Object.keys(stage.categories).every((category) =>
-          stage.categories[category].every((artist) => state.userAnswers[artist] === category)
+        correct = Object.keys(stage.categories || {}).every((category) =>
+          (stage.categories[category] || []).every((artist) => 
+            state.userAnswers[artist] === category)
         );
         break;
+      default:
+        correct = false;
     }
 
-    const feedback = correct ? stage.feedback : 'Not quite. Listen closer to the dissonance.';
+    const feedback = correct ? (stage.feedback || 'Correct!') : 'Not quite. Listen closer to the dissonance.';
     dispatch({ type: 'SET_FEEDBACK', payload: { isCorrect: correct, feedback, showFeedback: true } });
 
     if (correct) {
       if (uid) updateProgress(uid, currentAct, currentStage + 1);
 
       setTimeout(() => {
-        dispatch({ type: 'SET_FEEDBACK', payload: { showFeedback: false } });
+        dispatch({ type: 'CLEAR_FEEDBACK' });
 
         if (!isLastStage) {
-          setCurrentStage(prev => prev + 1);
-          setScreen('intro');
+          setTimeout(() => {
+            setCurrentStage(prev => prev + 1);
+            setScreen('intro');
+          }, 500);
         } else if (currentAct < 5) {
           const nextAct = currentAct + 1;
           if (!state.progressData[nextAct]?.includes(0)) {
             const updated = { ...state.progressData, [nextAct]: [0] };
             dispatch({ type: 'SET_PROGRESS', payload: updated });
-            updateProgress(uid, nextAct, 0);
+            if (uid) updateProgress(uid, nextAct, 0);
           }
-          setScreen('map');
+          setTimeout(() => {
+            setScreen('map');
+          }, 500);
         }
       }, 1500);
     }
   };
 
   const renderStageContent = () => {
-    const StageComponent = StageTypes[stage.type];
+    if (!stage) return <div>Loading stage...</div>;
+    
+    const StageComponent = StageTypes[stage.type] || (() => <div>Unknown stage type</div>);
     const commonProps = {
       stage,
       userAnswers: state.userAnswers,
@@ -183,32 +175,40 @@ function TunedToDissonance() {
 
     switch (stage.type) {
       case 'timeline':
-        return <StageComponent {...commonProps} handleTimelineDrop={(artist) => dispatch({ type: 'UPDATE_ANSWERS', payload: [...state.userAnswers, artist] })} />;
+        return <StageComponent {...commonProps} handleTimelineDrop={(artist) => 
+          dispatch({ type: 'ADD_TO_TIMELINE', artist })} />;
       case 'selection':
-        return <StageComponent {...commonProps} handleSelection={(artist) => dispatch({ type: 'UPDATE_SELECTED', payload: state.selectedItems.includes(artist) ? state.selectedItems.filter(i => i !== artist) : [...state.selectedItems, artist] })} />;
+        return <StageComponent {...commonProps} handleSelection={(artist) => 
+          dispatch({ type: 'TOGGLE_SELECTION', item: artist })} />;
       case 'pairs':
         return <StageComponent {...commonProps} handlePairSelection={(artist) => {
           if (state.selectedItems.length === 0) {
-            dispatch({ type: 'UPDATE_SELECTED', payload: [artist] });
+            dispatch({ type: 'TOGGLE_SELECTION', item: artist });
           } else if (state.selectedItems.length === 1) {
             const newPair = [...state.selectedItems, artist].sort();
-            dispatch({ type: 'UPDATE_ANSWERS', payload: [...state.userAnswers, newPair] });
-            dispatch({ type: 'UPDATE_SELECTED', payload: [] });
+            dispatch({ type: 'ADD_PAIR', pair: newPair });
           }
         }} />;
       case 'categorization':
         return <StageComponent {...commonProps} onDragEnd={(result) => {
           if (!result.destination) return;
-          const updatedAnswers = { ...state.userAnswers };
-          updatedAnswers[result.draggableId] = result.destination.droppableId;
-          dispatch({ type: 'UPDATE_ANSWERS', payload: updatedAnswers });
+          dispatch({ 
+            type: 'UPDATE_CATEGORIZATION', 
+            artist: result.draggableId, 
+            category: result.destination.droppableId 
+          });
         }} />;
-      case 'creative-composition':
-        return <StageComponent {...commonProps} />;
       default:
-        return <div>Unknown stage type</div>;
+        return <StageComponent {...commonProps} />;
     }
   };
+
+  useEffect(() => {
+    return () => {
+      const audioElements = document.querySelectorAll('audio');
+      audioElements.forEach(audio => audio.pause());
+    };
+  }, [screen]);
 
   return (
     <div className="min-h-screen bg-black text-gray-100 flex flex-col items-center p-8">
@@ -241,7 +241,7 @@ function TunedToDissonance() {
         />
       )}
 
-      {screen === 'stage' && (
+      {screen === 'stage' && stage && (
         <>
           <AudioController trackName={stage.audioTrack} isMuted={isMuted} />
 
@@ -258,10 +258,10 @@ function TunedToDissonance() {
           <AnimatePresence mode="wait">
             <motion.div
               key={`${currentAct}-${currentStage}`}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.3 }}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.5 }}
               className="w-full max-w-6xl bg-gray-800 rounded-b-xl p-8 shadow-2xl"
             >
               <div className="text-center mb-8">
@@ -292,7 +292,7 @@ function TunedToDissonance() {
                   className="px-6 py-3 bg-purple-600 hover:bg-purple-500 rounded-lg font-medium"
                   onClick={checkAnswers}
                 >
-                  {isLastStage && state.isCorrect ? 'Complete Act' : 'Check Connection'}
+                  {isLastStage ? 'Complete Act' : 'Check Connection'}
                 </motion.button>
               </div>
             </motion.div>
@@ -302,7 +302,7 @@ function TunedToDissonance() {
             visible={state.showFeedback}
             isCorrect={state.isCorrect}
             feedback={state.feedback}
-            onClose={() => dispatch({ type: 'SET_FEEDBACK', payload: { showFeedback: false } })}
+            onClose={() => dispatch({ type: 'CLEAR_FEEDBACK' })}
           />
         </>
       )}
@@ -311,7 +311,9 @@ function TunedToDissonance() {
 }
 
 function arraysEqual(a, b) {
-  return a.length === b.length && a.every((val, i) => val === b[i]);
+  return Array.isArray(a) && Array.isArray(b) && 
+         a.length === b.length && 
+         a.every((val, i) => val === b[i]);
 }
 
 export default TunedToDissonance;

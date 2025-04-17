@@ -2,18 +2,17 @@ import React, { useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import PropTypes from 'prop-types';
 
-function FeedbackModal({ show, message, isCorrect, onClose }) {
-  // Se for resposta correta, fecha automaticamente após 1s
+function FeedbackModal({ visible, isCorrect, feedback, onClose }) {
   useEffect(() => {
-    if (show && isCorrect) {
-      const timer = setTimeout(onClose, 1000);
+    if (visible && isCorrect) {
+      const timer = setTimeout(onClose, 1500);
       return () => clearTimeout(timer);
     }
-  }, [show, isCorrect, onClose]);
+  }, [visible, isCorrect, onClose]);
 
   return (
     <AnimatePresence>
-      {show && (
+      {visible && (
         <motion.div
           className="fixed inset-0 flex items-center justify-center bg-black/70 z-50"
           initial={{ opacity: 0 }}
@@ -29,7 +28,7 @@ function FeedbackModal({ show, message, isCorrect, onClose }) {
               isCorrect ? 'bg-green-700' : 'bg-red-700'
             }`}
           >
-            <p className="text-white text-lg font-medium mb-4">{message}</p>
+            <p className="text-white text-lg font-medium mb-4">{feedback}</p>
             {!isCorrect && (
               <button
                 onClick={onClose}
@@ -46,9 +45,9 @@ function FeedbackModal({ show, message, isCorrect, onClose }) {
 }
 
 FeedbackModal.propTypes = {
-  show: PropTypes.bool.isRequired,
-  message: PropTypes.string.isRequired,
+  visible: PropTypes.bool.isRequired,
   isCorrect: PropTypes.bool.isRequired,
+  feedback: PropTypes.string.isRequired,
   onClose: PropTypes.func.isRequired,
 };
 
