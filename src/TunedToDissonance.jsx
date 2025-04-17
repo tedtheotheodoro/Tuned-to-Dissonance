@@ -17,7 +17,7 @@ import ActIntro from './components/ActIntro';
 import FeedbackModal from './components/FeedbackModal';
 import { getProgress, updateProgress } from './components/services/progressService';
 import { auth } from './components/firebase';
-import { stageReducer, initialState } from './stageReducer';
+import { stageReducer, initialState } from './components/utils/stageReducer';
 
 const StageTypes = {
   timeline: TimelineStage,
